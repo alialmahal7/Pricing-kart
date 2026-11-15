@@ -432,6 +432,8 @@ td.wrap { white-space: normal; min-width: 220px; font-size: 12px; }
 .fb-card input { padding: 10px 12px; border: 1px solid #d6dbe3; border-radius: 8px; font: 15px var(--font-num); direction: ltr; }
 .fb-card button { width: 100%; padding: 11px; border: 0; border-radius: 8px; background: #0b1b33; color: #fff; font: 700 15px var(--font-body); cursor: pointer; margin-top: 4px; }
 .fb-card .fb-link { background: none; color: #2f6fb0; width: auto; padding: 6px 0; font-weight: 500; font-size: 13px; }
+#fbLogin { gap: 12px; align-content: center; }
+.fb-note { border-top-color: #b91c1c; font-size: 14px; line-height: 1.7; direction: rtl; }
 .fb-msg { min-height: 18px; font-size: 13px; margin-top: 8px; } .fb-msg.bad { color: #b91c1c; } .fb-msg.good { color: #047857; }
 #fbBar { position: fixed; bottom: 12px; left: 12px; z-index: 60; display: flex; gap: 8px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 99px; padding: 5px 6px 5px 14px; font-size: 12.5px; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
 #fbBar button { border: 1px solid var(--line); background: var(--bg); border-radius: 99px; padding: 4px 10px; cursor: pointer; font: 600 12px var(--font-body); color: var(--ink); }
@@ -3648,7 +3650,7 @@ window.__appInit = init; window.__S = () => state;
   <button id="fbBtn" type="submit">دخول</button>
   <button class="fb-link" id="fbReset" type="button">نسيت كلمة السر؟</button>
   <div class="fb-msg" id="fbMsg"></div>
-</form></div>
+</form><div class="fb-card fb-note" id="fbNote" hidden></div></div>
 <div id="fbBar" hidden><span id="fbUser"></span><button id="fbOut" type="button">خروج</button></div>
 <div id="fbNews" hidden></div>
 </body>

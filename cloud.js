@@ -11,7 +11,13 @@ const EDITOR_DOCS = ["fares", "iata", "log"]; // an editor may change only fares
 const ready = firebaseConfig && firebaseConfig.apiKey && firebaseConfig.databaseURL;
 
 function showLogin(msg, kind) { $("fbLogin").hidden = false; $("fbMsg").textContent = msg || ""; $("fbMsg").className = "fb-msg " + (kind || ""); }
-if (!ready) { showLogin("firebase-config.js لسه فاضي. املأه من Firebase Console → Project settings → Your apps.", "bad"); $("fbForm").hidden = true; }
+if (!ready) {
+  const miss = !firebaseConfig || !firebaseConfig.apiKey ? "apiKey" : "databaseURL";
+  $("fbForm").hidden = true; $("fbNote").hidden = false;
+  $("fbNote").innerHTML = `<b>ملف firebase-config.js ناقص: ${miss}</b><br>` + (miss === "databaseURL"
+    ? "افتح Firebase Console ← Realtime Database ← Data، وانسخ الرابط الفوق الجدول (بيبدأ بـ https:// وبينتهي بـ firebasedatabase.app أو firebaseio.com)، وحطّو في databaseURL."
+    : "افتح Firebase Console ← Project settings ← Your apps ← Web، وانسخ قيم firebaseConfig.");
+}
 else {
   const app = initializeApp(firebaseConfig); const auth = getAuth(app); const rtdb = getDatabase(app);
   let me = null; let role = null; const known = {};
