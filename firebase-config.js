@@ -1,5 +1,5 @@
 // غيّر السطر بتاع apiKey بس: الصق المفتاح بين علامتي التنصيص
-export const firebasAIzaSyA1Jzo1xeJhA8DAuUCmEkFFwCvNi_Mo8xcAIzaSyA1Jzo1xeJhA8DAuUCmEkFFwCvNi_Mo8xceConfig = {
+const firebaseConfig = {
   apiKey: "AIzaSyA1Jzo1xeJhA8DAuUCmEkFFwCvNi_Mo8xc",
   authDomain: "pricing-kart.firebaseapp.com",
   databaseURL: "https://pricing-kart-default-rtdb.firebaseio.com",
