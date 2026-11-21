@@ -44,10 +44,33 @@ else {
             throw { code: "في زول تاني عدّل البيانات دي بعد ما فتحت الصفحة. اعمل Refresh وجرّب تاني" };
           }
           const t = Date.now(); await set(r, { json: JSON.stringify(value), t, by: me }); known[path] = t;
+          if (name === "fares" || name === "settings") schedulePublic();
         },
       };
     },
   };
+  // ---------- public USD board for colleagues (read by the separate fares site) ----------
+  let pubTimer = null;
+  const schedulePublic = () => { clearTimeout(pubTimer); pubTimer = setTimeout(publishPublic, 800); };
+  async function publishPublic() {
+    try {
+      const S = window.__S && window.__S(); const d = S && S.data; if (!d || !d.fares) return;
+      const hid = new Set(Array.isArray((d.settings || {}).hiddenRoutes) ? d.settings.hiddenRoutes : []);
+      const pr = ref(rtdb, "public/fares"); const pv = (await get(pr)).val(); const prev = pv && pv.json ? JSON.parse(pv.json) : null;
+      const pm = {}; ((prev && prev.routes) || []).forEach((x) => { pm[x.r] = x; });
+      const now = Date.now();
+      const routes = allRoutes().filter((r) => !hid.has(r)).map((r) => {
+        const rows = ((d.fares[r] || {}).rows || []).filter((x) => x && String(x.cls || "").trim() && x.USD !== null && x.USD !== "" && !isNaN(Number(x.USD)))
+          .map((x) => ({ c: String(x.cls).trim().toUpperCase(), u: Number(x.USD), pc: x.pc ?? null, kg: x.kg ?? null }));
+        if (!rows.length) return null;
+        const p = pm[r]; const same = p && JSON.stringify(p.rows) === JSON.stringify(rows);
+        return { r, g: routeGroup(r), via: viaOf(r) || "", rows, t: same ? p.t : (prev ? now : 0) };
+      }).filter(Boolean);
+      if (prev && JSON.stringify(prev.routes) === JSON.stringify(routes)) return;
+      await set(pr, { json: JSON.stringify({ t: now, routes }), t: now, by: me });
+    } catch (e) { console.warn("public board publish failed", e); }
+  }
+
   const dl = { async save({ filename, data }) { const a = document.createElement("a"); a.href = URL.createObjectURL(data instanceof Blob ? data : new Blob([data])); a.download = filename; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); } };
 
   $("fbForm").addEventListener("submit", async (e) => { e.preventDefault(); $("fbBtn").disabled = true; showLogin("بيدخل…");
@@ -71,6 +94,7 @@ else {
     window.claude = { use: async (n) => (n === "db" ? dbShim : n === "downloads" ? dl : null) };
     window.__S().me = me; window.__S().role = role;
     await window.__appInit();
+    publishPublic();
     if (role === "editor") document.querySelectorAll("#h_roeOut, #h_roeIn, #e_sdgRate").forEach((x) => { x.readOnly = true; x.title = "المالك بس بيغيّر الريت"; });
     // changes made by other people since my last visit
     const key = "fb_seen_" + user.uid; const seen = Number(localStorage.getItem(key) || 0);
