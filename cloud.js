@@ -52,6 +52,8 @@ else {
   // ---------- public USD board for colleagues (read by the separate fares site) ----------
   let pubTimer = null;
   const schedulePublic = () => { clearTimeout(pubTimer); pubTimer = setTimeout(publishPublic, 800); };
+  // a fare "changes" when its USD price or baggage changes; a new ROE alone only refreshes the local-currency columns
+  const core = (rows) => JSON.stringify((rows || []).map((y) => [y.c, y.u, y.pc, y.kg]));
   async function publishPublic() {
     try {
       const S = window.__S && window.__S(); const d = S && S.data; if (!d || !d.fares) return;
@@ -61,9 +63,13 @@ else {
       const now = Date.now();
       const routes = allRoutes().filter((r) => !hid.has(r)).map((r) => {
         const rows = ((d.fares[r] || {}).rows || []).filter((x) => x && String(x.cls || "").trim() && x.USD !== null && x.USD !== "" && !isNaN(Number(x.USD)))
-          .map((x) => ({ c: String(x.cls).trim().toUpperCase(), u: Number(x.USD), pc: x.pc ?? null, kg: x.kg ?? null }));
+          .map((x) => { const u = Number(x.USD); let calc = null; const v = {};
+            CURRENCIES.filter((c) => c !== "USD").forEach((c) => { let n = x[c] !== null && x[c] !== "" && !isNaN(Number(x[c])) ? Number(x[c]) : null;
+              if (n === null) { try { calc = calc || fromUSD(u, r); n = calc[c] ?? null; } catch (e) {} }
+              if (n !== null && isFinite(n)) v[c] = Math.round(n * 1000) / 1000; });
+            return { c: String(x.cls).trim().toUpperCase(), u, pc: x.pc ?? null, kg: x.kg ?? null, v }; });
         if (!rows.length) return null;
-        const p = pm[r]; const same = p && JSON.stringify(p.rows) === JSON.stringify(rows);
+        const p = pm[r]; const same = p && core(p.rows) === core(rows);
         return { r, g: routeGroup(r), via: viaOf(r) || "", rows, t: same ? p.t : (prev ? now : 0) };
       }).filter(Boolean);
       if (prev && JSON.stringify(prev.routes) === JSON.stringify(routes)) return;
@@ -71,7 +77,7 @@ else {
       const changes = ((prev && prev.changes) || []).filter((c) => now - c.t < 30 * 864e5);
       if (prev) {
         const nm = {}; routes.forEach((x) => { nm[x.r] = x; });
-        routes.forEach((x) => { const p = pm[x.r]; if (!p || JSON.stringify(p.rows) !== JSON.stringify(x.rows)) changes.unshift({ t: now, r: x.r, g: x.g, f: p ? p.rows : null, n: x.rows }); });
+        routes.forEach((x) => { const p = pm[x.r]; if (!p || core(p.rows) !== core(x.rows)) changes.unshift({ t: now, r: x.r, g: x.g, f: p ? p.rows : null, n: x.rows }); });
         Object.keys(pm).forEach((r) => { if (!nm[r]) changes.unshift({ t: now, r, g: pm[r].g, f: pm[r].rows, n: null }); });
       }
       await set(pr, { json: JSON.stringify({ t: now, routes, changes: changes.slice(0, 200) }), t: now, by: me });
