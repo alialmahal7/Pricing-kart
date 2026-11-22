@@ -67,7 +67,14 @@ else {
         return { r, g: routeGroup(r), via: viaOf(r) || "", rows, t: same ? p.t : (prev ? now : 0) };
       }).filter(Boolean);
       if (prev && JSON.stringify(prev.routes) === JSON.stringify(routes)) return;
-      await set(pr, { json: JSON.stringify({ t: now, routes }), t: now, by: me });
+      // change feed: what each route looked like before and after (for the "since your last visit" banner)
+      const changes = ((prev && prev.changes) || []).filter((c) => now - c.t < 30 * 864e5);
+      if (prev) {
+        const nm = {}; routes.forEach((x) => { nm[x.r] = x; });
+        routes.forEach((x) => { const p = pm[x.r]; if (!p || JSON.stringify(p.rows) !== JSON.stringify(x.rows)) changes.unshift({ t: now, r: x.r, g: x.g, f: p ? p.rows : null, n: x.rows }); });
+        Object.keys(pm).forEach((r) => { if (!nm[r]) changes.unshift({ t: now, r, g: pm[r].g, f: pm[r].rows, n: null }); });
+      }
+      await set(pr, { json: JSON.stringify({ t: now, routes, changes: changes.slice(0, 200) }), t: now, by: me });
     } catch (e) { console.warn("public board publish failed", e); }
   }
 
