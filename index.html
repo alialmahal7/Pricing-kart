@@ -168,8 +168,8 @@ small.pct { display: inline-block; margin-inline-start: 6px; padding: 1px 6px; b
 .chip.agr { box-shadow: inset -4px 0 0 #2f9c84; }
 :root[lang="en"] .chip.agr { box-shadow: inset 4px 0 0 #2f9c84; }
 .agr-legend { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); margin: 0 0 6px; }
-.agr-legend i { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--line); background: var(--surface); box-shadow: inset -4px 0 0 #2f9c84; }
-:root[lang="en"] .agr-legend i { box-shadow: inset 4px 0 0 #2f9c84; }
+.agr-legend i { width: 12px; height: 12px; border-radius: 3px; background: #1f8a4c; }
+.agr-legend i.own { background: #1e3a5f; }
 .pen-stn { margin-top: 8px; }
 .pen-stn .chip { min-width: 96px; }
 .pen-legs .routes { max-height: 360px; overflow: auto; padding: 2px; }
@@ -272,6 +272,32 @@ nav button[aria-selected="true"] { background: var(--gold); color: var(--gold-in
 #routeGrid .chip .meta { display: block; font: 500 10.5px var(--font-num); color: var(--muted); margin-top: 1px; }
 #routeGrid .chip[aria-pressed="true"] .meta { color: inherit; opacity: .8; }
 #routeGrid .chip .wt { display: block; font: 600 10px var(--font-body); margin-top: 1px; }
+/* big route tiles, colored by direction from Sudan */
+#routeGrid .routes { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+#routeGrid .chip.tile { --dc: #64748b; --dl: #eef1f5; padding: 0; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; align-items: stretch; text-align: start; background: var(--surface); border: 1px solid var(--line); color: var(--ink); box-shadow: none; }
+#routeGrid .chip.tile.own { --dc: #1e3a5f; --dl: #eaf0f7; } #routeGrid .chip.tile.own-agr { --dc: #1f8a4c; --dl: #e5f4ea; }
+#routeGrid .chip.tile.dS { --dc: #c7731d; --dl: #fbefe0; } #routeGrid .chip.tile.dW { --dc: #b03a6a; --dl: #f8e6ee; }
+#routeGrid .chip.tile .tb { background: var(--dc); color: #fff; padding: 10px 10px 9px; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+#routeGrid .chip.tile .tb .rn { font: 800 17px var(--font-num); letter-spacing: .02em; color: #fff; direction: ltr; }
+#routeGrid .chip.tile .tb .rn .via { color: #fff; opacity: .85; }
+#routeGrid .chip.tile .tb small { font: 600 12px var(--font-num); opacity: .9; direction: ltr; }
+#routeGrid .chip.tile .tr { flex: 1; padding: 4px 10px 3px; display: grid; gap: 0; min-height: 60px; align-content: start; }
+#routeGrid .chip.tile .tr div { display: flex; justify-content: space-between; font: 600 11px/1.45 var(--font-num); direction: ltr; }
+#routeGrid .chip.tile .tr div b { color: #c0392b; font: 700 11px/1.45 var(--font-num); } #routeGrid .chip.tile .tr div span { color: var(--ink); }
+#routeGrid .chip.tile .tr .more, #routeGrid .chip.tile .tr .none { justify-content: center; color: var(--muted); font: 500 11px var(--font-body); letter-spacing: 0; }
+#routeGrid .chip.tile .tf .nt, #routeGrid .chip.tile .tf .ag { white-space: nowrap; }
+#routeGrid .chip.tile .tf { font-family: var(--font-body); letter-spacing: 0; border-top: 1px solid var(--line); padding: 3px 10px; display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 10.5px; color: var(--muted); background: var(--dl); }
+#routeGrid .chip.tile .tf .city { color: var(--ink); font-weight: 600; } #routeGrid .chip.tile .tf .bg { font-family: var(--font-num); direction: ltr; }
+#routeGrid .chip.tile .tf .ag { font-size: 10px; padding: 0 5px; border-radius: 4px; background: #d8efe8; color: #1d6b58; font-weight: 700; }
+#routeGrid .chip.tile .tf .nt { color: var(--warn); font-weight: 700; }
+#routeGrid .chip.tile.agr { box-shadow: none; }
+#routeGrid .chip.tile[aria-pressed="true"] { outline: 3px solid var(--gold, #c9a44c); outline-offset: -1px; background: var(--surface); color: var(--ink); }
+#routeGrid .chip.tile[aria-pressed="true"] .tb { box-shadow: inset 0 -3px 0 rgba(0,0,0,.18); }
+#routeGrid .chip.tile.empty .tr { opacity: .6; } #routeGrid .chip.tile.off { opacity: .35; }
+#routeGrid .chip.tile.notax { border-color: var(--warn); }
+:root[data-theme="dark"] #routeGrid .chip.tile .tf { background: rgba(255,255,255,.04); }
+.dir-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 2px 0 6px; }
+.dir-legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-inline-end: 5px; vertical-align: -1px; }
 .orgs { display: flex; flex-wrap: wrap; gap: 8px; }
 .org { min-width: 112px; padding: 9px 14px 8px; border-radius: 11px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; display: grid; justify-items: center; gap: 1px; box-shadow: var(--shadow); transition: transform .08s ease; }
 .org:hover { border-color: var(--gold); transform: translateY(-1px); }
@@ -1294,6 +1320,21 @@ const GROUP_ORDER = ["KRT", "PZU", "KSL", "DOG", "DOM", "TRANSIT"];
 const originGroup = (r) => routeGroup(r);
 const groupLabel = (g) => ({ KRT: "الخرطوم", PZU: "بورتسودان", KSL: "كسلا", DOG: "دنقلا", DOM: "الداخلي", TRANSIT: "ترانزيت" })[g] || g;
 state.routeOrigin = "KRT";
+const SD_AIRPORTS = new Set(["KRT", "PZU", "KSL", "DOG", "ELF", "EBD", "UYL", "EGN", "ATB", "DNX"]);
+const DIR_OF = { CAI: "N", IST: "N", HBE: "N", ASW: "N", LXR: "N", JED: "E", RUH: "E", DMM: "E", MED: "E", AHB: "E", TUU: "E", ELQ: "E", TIF: "E", GIZ: "E", YNB: "E", DOH: "E", DXB: "E", SHJ: "E", AUH: "E", MCT: "E", KWI: "E", BAH: "E", AMM: "E", ADD: "S", ASM: "S", JUB: "S", EBB: "S", NBO: "S", KGL: "S", WUU: "S", MAK: "S", NDJ: "W", ABV: "W", LOS: "W", BGF: "W", TRP: "N", BEN: "N" };
+const DIR_NAME = { N: ["شمال", "North"], E: ["شرق", "East"], S: ["جنوب", "South"], W: ["غرب", "West"], D: ["داخلي", "Domestic"] };
+const DIR_COLOR = { N: "#6b4fbb", E: "#0f7c7c", S: "#c7731d", W: "#b03a6a", D: "#64748b" };
+const CITY = { KRT: ["الخرطوم", "Khartoum"], PZU: ["بورتسودان", "Port Sudan"], KSL: ["كسلا", "Kassala"], DOG: ["دنقلا", "Dongola"], ELF: ["الفاشر", "El Fasher"], EBD: ["الأبيض", "El Obeid"], UYL: ["نيالا", "Nyala"], EGN: ["الجنينة", "Geneina"], ATB: ["عطبرة", "Atbara"], DNX: ["الدمازين", "Damazin"], CAI: ["القاهرة", "Cairo"], JED: ["جدة", "Jeddah"], RUH: ["الرياض", "Riyadh"], DMM: ["الدمام", "Dammam"], MED: ["المدينة", "Madinah"], AHB: ["أبها", "Abha"], TUU: ["تبوك", "Tabuk"], ELQ: ["القصيم", "Qassim"], DOH: ["الدوحة", "Doha"], DXB: ["دبي", "Dubai"], SHJ: ["الشارقة", "Sharjah"], MCT: ["مسقط", "Muscat"], KWI: ["الكويت", "Kuwait"], ADD: ["أديس أبابا", "Addis Ababa"], ASM: ["أسمرا", "Asmara"], JUB: ["جوبا", "Juba"], EBB: ["عنتيبي", "Entebbe"] };
+function routeFar(r) { const [o, d] = baseLeg(r).split("-"); return !SD_AIRPORTS.has(d) ? d : !SD_AIRPORTS.has(o) ? o : d; }
+function routeDir(r) { const [o, d] = baseLeg(r).split("-"); if (SD_AIRPORTS.has(o) && SD_AIRPORTS.has(d)) return "D"; return DIR_OF[routeFar(r)] || "D"; }
+const cityName = (a) => (CITY[a] ? L(CITY[a][0], CITY[a][1]) : a);
+function routeTileBody(r) {
+  const rows = ((state.data.fares[r] || {}).rows || []).filter((x) => x && String(x.cls || "").trim());
+  if (!rows.length) return `<div class="none">${L("فاضي", "Empty")}</div>`;
+  const shown = rows.slice(0, 5);
+  return shown.map((x) => `<div><b>${esc(String(x.cls).trim().toUpperCase())}</b><span>${isNum(x.USD) ? "$" + Number(x.USD).toLocaleString("en-US") : "–"}</span></div>`).join("") + (rows.length > shown.length ? `<div class="more">+${rows.length - shown.length} ${L("كلاس", "more")}</div>` : "");
+}
+function routeTileBag(r) { const x = (((state.data.fares[r] || {}).rows) || [])[0]; return x && (isNum(x.pc) || isNum(x.kg)) ? `${isNum(x.pc) ? x.pc + "PC" : ""}${isNum(x.pc) && isNum(x.kg) ? " · " : ""}${isNum(x.kg) ? x.kg : ""}` : ""; }
 function renderRoutes() {
   const q = ($("routeSearch").value || "").trim().toUpperCase();
   const routes = allRoutes().filter((r) => (state.routeOrigin === "ALL" || originGroup(r) === state.routeOrigin) && (!q || r.includes(q) || flightsOf(r).toUpperCase().split(/[^0-9A-Z]+/).some((f) => f && f.startsWith(q))));
@@ -1310,10 +1351,11 @@ function renderRoutes() {
   const agrSet = new Set(((state.agreement || {}).fares || []).map((f) => f.route));
   const agrShown = routes.some((r) => agrSet.has(r));
   const agrName = state.agreement ? String(state.agreement.title || "").split("·")[0].trim() || "J4 / 3T" : "";
-  $("routeGrid").innerHTML = (routes.length && agrShown ? `<div class="agr-legend"><i></i>${L(`روت مشترك في اتفاقية ${esc(agrName)}`, `Shared route in the ${esc(agrName)} agreement`)}</div>` : "") + (routes.length ? gl.filter((g) => groups[g]).map((g) => `<div><p class="grp-h">${groupLabel(g)} (${groups[g].length})</p><div class="routes ${multi ? "multi" : ""}">` + groups[g].map((r) => {
+  $("routeGrid").innerHTML = (routes.length && agrShown ? `<div class="agr-legend"><i></i>${L(`مشترك في اتفاقية ${esc(agrName)}`, `Shared in the ${esc(agrName)} agreement`)}<i class="own" style="margin-inline-start:10px"></i>${L("روتاتنا", "Our routes")}</div>` : "") + (routes.length ? gl.filter((g) => groups[g]).map((g) => `<div><p class="grp-h">${groupLabel(g)} (${groups[g].length})</p><div class="routes ${multi ? "multi" : ""}">` + groups[g].map((r) => {
     const n = ((state.data.fares[r] || {}).rows || []).length;
     const warn = n && !hasTax(r); const fl = flightsOf(r);
-    return `<button class="chip ${n ? "" : "empty"} ${warn ? "notax" : ""} ${multi && !multiOk(r) ? "off" : ""} ${agrSet.has(r) ? "agr" : ""}" aria-pressed="${multi ? multi.routes.includes(r) : r === state.route}" data-route="${r}" ${warn ? 'title="الخط ده ما عندو ضرايب IATA"' : ""}><span class="rn">${routeLabelHtml(r)}</span><span class="meta">${fl ? esc(fl) + " · " : ""}${n || "فاضي"}</span>${warn ? '<span class="wt">⚠ بدون ضرايب</span>' : ""}</button>`;
+    const dir = routeDir(r); const bag = routeTileBag(r);
+    return `<button class="chip tile ${agrSet.has(r) ? "own-agr" : "own"} ${n ? "" : "empty"} ${warn ? "notax" : ""} ${multi && !multiOk(r) ? "off" : ""} ${agrSet.has(r) ? "agr" : ""}" aria-pressed="${multi ? multi.routes.includes(r) : r === state.route}" data-route="${r}" ${warn ? 'title="الخط ده ما عندو ضرايب IATA"' : ""}><span class="tb"><span class="rn">${routeLabelHtml(r)}</span>${fl ? `<small>${esc(fl)}</small>` : ""}</span><span class="tr">${routeTileBody(r)}</span><span class="tf"><span class="city">${esc(cityName(routeFar(r)))}</span>${warn ? `<span class="nt">⚠ ${L("بدون ضرايب", "No taxes")}</span>` : agrSet.has(r) ? `<span class="ag">${L("اتفاقية", "Agreement")}</span>` : bag ? `<span class="bg">${bag}</span>` : ""}</span></button>`;
   }).join("") + "</div></div>").join("") : `<p class="muted">ما في خط بالبحث ده.</p>`);
   const allOn = state.curs.length === CURRENCIES.length;
   $("curChips").innerHTML = CURRENCIES.map((c) => `<button class="chip" style="min-width:64px" aria-pressed="${state.curs.includes(c)}" data-cur="${c}">${c}</button>`).join("") + `<button class="chip" style="min-width:64px" aria-pressed="${allOn}" data-cur="ALL"><span style="font-family:var(--font-body)">كل العملات</span></button>`;
