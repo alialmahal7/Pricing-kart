@@ -435,6 +435,11 @@ label.f input, label.f select { font: 14px var(--font-num); padding: 7px 9px; bo
 .tile.click { cursor: pointer; } .tile.click[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
 td.wrap { white-space: normal; min-width: 220px; font-size: 12px; }
 .pill { font: 600 12px var(--font-num); padding: 2px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 7px 16px; font: 600 13.5px var(--font-body); color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--navy, #14304a); color: #fff; }
+#calcTable tr.sec td { background: var(--surface-2, #f3f4f6); font-weight: 700; color: var(--ink); text-align: start; }
+#calcTable tr.sec td small { font-weight: 500; color: var(--muted); margin-inline-start: 8px; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .tile { border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
 .tile b { display: block; font: 600 18px var(--font-num); direction: ltr; text-align: right; }
@@ -533,18 +538,23 @@ body[data-role="editor"] #ctxMenu [data-ctx="pen"], body[data-role="editor"] [da
   <!-- CALCULATOR -->
   <section id="tab-calc" hidden>
     <div class="card">
-      <h2>حاسبة سريعة (زي شاشة INTERFACE)</h2>
+      <div class="row between"><h2>حاسبة سريعة</h2><div class="seg" id="c_trip" role="tablist"><button type="button" data-trip="OW" aria-pressed="true">One Way</button><button type="button" data-trip="RT" aria-pressed="false">ذهاب وعودة (RT)</button></div></div>
       <div class="grid-f">
-        <label class="f">الخط (الوجهة)<input id="c_route" value="ELQ-KRT"></label>
-        <label class="f">رقم الرحلة<input id="c_flt" value="225"></label>
+        <label class="f"><span id="c_routeLbl">الخط (الوجهة)</span><input id="c_route" value="ELQ-KRT"></label>
+        <label class="f"><span id="c_fltLbl">رقم الرحلة</span><input id="c_flt" value="225"></label>
+        <label class="f rt-only" hidden>رقم رحلة العودة<input id="c_flt2" value=""></label>
         <label class="f">العملة<select id="c_cur"></select></label>
-        <label class="f" id="c_totalWrap">السعر الكلي<input id="c_total" type="number" value="240"></label>
+        <label class="f" id="c_totalWrap"><span id="c_totalLbl">السعر الكلي</span><input id="c_total" type="number" value="240"></label>
+        <label class="f rt-only" id="c_outWrap" hidden>سعر الذهاب<input id="c_out" type="number" inputmode="decimal"></label>
         <label class="f">الكلاس (Fare Code)<input id="c_cls" value="J"></label>
         <label class="f">عدد القطع<input id="c_pc" type="number" value="2"></label>
         <label class="f">الوزن KG<input id="c_kg" type="number" value="60"></label>
+        <label class="f rt-only" hidden>قطع العودة<input id="c_pc2" type="number"></label>
+        <label class="f rt-only" hidden>وزن العودة KG<input id="c_kg2" type="number"></label>
       </div>
       <div id="c_multi" hidden style="display:grid;gap:8px">
         <div class="grid-f"><label class="f">السعر SDG<input id="c_tot_SDG" type="number" inputmode="decimal"></label><label class="f">السعر USD<input id="c_tot_USD" type="number" inputmode="decimal"></label><label class="f">السعر SAR<input id="c_tot_SAR" type="number" inputmode="decimal"></label><label class="f">السعر AED<input id="c_tot_AED" type="number" inputmode="decimal"></label><label class="f">السعر OMR<input id="c_tot_OMR" type="number" inputmode="decimal"></label><label class="f">السعر EGP<input id="c_tot_EGP" type="number" inputmode="decimal"></label><label class="f">السعر QAR<input id="c_tot_QAR" type="number" inputmode="decimal"></label><label class="f">السعر KWD<input id="c_tot_KWD" type="number" inputmode="decimal"></label></div>
+        <div class="grid-f rt-only" hidden><label class="f">ذهاب SDG<input id="c_out_SDG" type="number" inputmode="decimal"></label><label class="f">ذهاب USD<input id="c_out_USD" type="number" inputmode="decimal"></label><label class="f">ذهاب SAR<input id="c_out_SAR" type="number" inputmode="decimal"></label><label class="f">ذهاب AED<input id="c_out_AED" type="number" inputmode="decimal"></label><label class="f">ذهاب OMR<input id="c_out_OMR" type="number" inputmode="decimal"></label><label class="f">ذهاب EGP<input id="c_out_EGP" type="number" inputmode="decimal"></label><label class="f">ذهاب QAR<input id="c_out_QAR" type="number" inputmode="decimal"></label><label class="f">ذهاب KWD<input id="c_out_KWD" type="number" inputmode="decimal"></label></div>
         <div class="row"><button class="btn ghost" id="c_fromUsd">احسب من الدولار</button><span class="muted">SDG بالـ ROE OUT/IN، والباقي بسعر صرف الأسعار في الإعدادات</span></div>
       </div>
       <div class="msgs" id="calcMsgs"></div>
@@ -936,16 +946,18 @@ function taxCurrencyOptions(leg, roe) {
   const out = ["USD"]; for (const a of [o, d]) { const cc = AIRPORT_CUR[a]; if (cc && !out.includes(cc) && isNum(R[cc])) out.push(cc); }
   return out;
 }
-/** Convert one tax amount (entered in `from`, default USD) -> SDG (rounded to 0.1 like the booking system) -> target */
+/** Convert one tax amount (entered in `from`, default USD) to `cur` through the SDG ROE table, rounded like the booking system */
 function convertTax(amount, cur, roe, from = "USD") {
   const R = roe || DEFAULT_ROE; from = from || "USD";
   if (cur === from) return r2(Number(amount));
   let sdg;
   if (from === "SDG") sdg = Number(amount);
-  else { if (!isNum(R[from])) return null; sdg = Math.round((Number(amount) / Number(R[from]) + 1e-9) * 10) / 10; }
-  if (cur === "SDG") return sdg;
+  else { if (!isNum(R[from])) return null; sdg = Number(amount) / Number(R[from]); }
+  if (cur === "SDG") return Math.round((sdg + 1e-9) * 10) / 10;
   if (!isNum(R[cur])) return null;
-  return r2(sdg * Number(R[cur]));
+  // like the booking system: round to 3 decimals first, then to 2 (6.43478 -> 6.435 -> 6.44)
+  const m3 = Math.round(sdg * Number(R[cur]) * 1000 + 1e-7);
+  return Math.round(m3 / 10 + 1e-9) / 100;
 }
 
 /** Per-leg IATA taxes: { ad, chd, inf, lines:[{code, usd, ex, amount}] } or null */
@@ -1497,21 +1509,84 @@ function fromUSD(u, route) {
   for (const c of Object.keys(fareRates())) out[c] = convFare(u, c);
   return out;
 }
+// ---------- round trip (RT): one fare for the whole trip, split into an outbound and a return share ----------
+const reverseRoute = (r) => { const [o, d] = baseLeg(r).split("-"); const v = viaOf(r); return d && o ? `${d}-${o}${v ? "@" + v : ""}` : ""; };
+function priceRT(inp, data, s) {
+  const P = Number(inp.total), A = Number(inp.out), R = P - A, cur = inp.cur;
+  const back = reverseRoute(inp.route);
+  const o = priceClass({ ...inp, total: A }, data, s);
+  const r = priceClass({ ...inp, route: back, flt: inp.flt2 || inp.flt, total: R, pc: isNum(inp.pc2) ? inp.pc2 : inp.pc, kg: isNum(inp.kg2) ? inp.kg2 : inp.kg }, data, s);
+  const warnings = [];
+  if (!(P > 0)) warnings.push("اكتب السعر الكلي");
+  if (!(A > 0) || !(A < P)) warnings.push("سعر الذهاب لازم يكون أكبر من صفر وأقل من السعر الكلي");
+  [...o.warnings, ...r.warnings].forEach((w) => { if (!/YQ بالسالب/.test(w) && !warnings.includes(w)) warnings.push(w); });
+  const comm = P * (cur === "SDG" ? s.commSDG : s.commOther) / 100;
+  const fareAD = cur === "SAR" ? Number(s.sarFixedFare) : comm * s.fareMultiplier;
+  const g18 = Number(s.chdPct), h18 = Number(s.infPct);
+  const fareCHD = g18 > 100 ? s.chdFixedFareBase * 5 : (g18 / 100) * fareAD;
+  const chdOf = (x) => (g18 <= 90 ? xlRound(x * g18 / 100) : g18), infOf = (x) => (h18 <= 45 ? xlRound(x * h18 / 100) : h18);
+  const side = (res, amt, isOut) => { const k = res.breakdown;
+    const tot = { AD: amt, WCHR: amt, CHD: chdOf(amt), INF: infOf(amt) };
+    const half = { AD: fareAD / 2, WCHR: fareAD / 2, CHD: fareCHD / 2, INF: 0 };
+    const tax = { AD: k.tax, WCHR: k.tax, CHD: k.taxChd, INF: k.infTax };
+    const rtAmt = { AD: fareAD, WCHR: fareAD, CHD: fareCHD, INF: 0 };
+    const lines = res.lines.map((l) => ({ ...l, AmountOW: 0, AmountRT: isOut ? r2(rtAmt[l.PassengerType]) : 0, AmountYQ: r2(tot[l.PassengerType] - half[l.PassengerType] - tax[l.PassengerType]) }));
+    lines.forEach((l) => { if (l.AmountYQ < 0) warnings.push(`YQ بالسالب في ${isOut ? "الذهاب" : "العودة"} (${l.PassengerType} ${inp.cls})`); });
+    return { leg: k.leg, lines, tot, tax };
+  };
+  const out = side(o, A, true), ret = side(r, R, false);
+  return { lines: [...ret.lines, ...out.lines], out, ret, warnings, breakdown: { total: P, outAmt: A, retAmt: R, comm: r2(comm), fareAD: r2(fareAD), fareCHD: r2(fareCHD), half: r2(fareAD / 2), back, totCHD: chdOf(P), totINF: infOf(P) } };
+}
+const calcTrip = () => (state.calcTrip || "OW");
 function calcBase() { return { route: $("c_route").value.trim().toUpperCase(), flt: $("c_flt").value.trim(), cls: $("c_cls").value.trim(), pc: Number($("c_pc").value), kg: Number($("c_kg").value) }; }
-function calcInput() { return { ...calcBase(), cur: $("c_cur").value, total: Number($("c_total").value) }; }
+function calcInput() { return { ...calcBase(), flt2: $("c_flt2").value.trim(), pc2: $("c_pc2").value === "" ? null : Number($("c_pc2").value), kg2: $("c_kg2").value === "" ? null : Number($("c_kg2").value), cur: $("c_cur").value, total: Number($("c_total").value), out: Number($("c_out").value) }; }
+const calcPrice = (inp) => (calcTrip() === "RT" ? priceRT(inp, state.data, state.data.settings) : priceClass(inp, state.data, state.data.settings));
 function calcAllResults() {
   const base = calcBase(); const out = [];
   for (const c of CURRENCIES) { const v = $("c_tot_" + c).value; if (!isNum(v)) { out.push({ cur: c, skip: true }); continue; }
-    out.push({ cur: c, res: priceClass({ ...base, cur: c, total: Number(v) }, state.data, state.data.settings) }); }
+    if (calcTrip() === "RT" && !isNum($("c_out_" + c).value)) { out.push({ cur: c, skip: true }); continue; }
+    out.push({ cur: c, res: calcPrice({ ...base, flt2: $("c_flt2").value.trim(), pc2: $("c_pc2").value === "" ? null : Number($("c_pc2").value), kg2: $("c_kg2").value === "" ? null : Number($("c_kg2").value), cur: c, total: Number(v), out: Number($("c_out_" + c).value) }) }); }
   return out;
 }
 const linesHead = `<thead><tr><th>العملة</th><th>PassengerType</th><th class="num">AmountOW</th><th class="num">AmountYQ</th><th class="num">Tax</th><th class="num">Weight</th><th class="num">Pieces</th><th class="num">KG/Piece</th><th class="num">Excess</th></tr></thead>`;
 function lineRow(cur, l, k, first) { const t = l.PassengerType === "INF" ? k.infTax : l.PassengerType === "CHD" ? k.taxChd : k.tax;
   return `<tr class="${first ? "blk" : ""}"><td>${cur}</td><td>${l.PassengerType}</td><td class="num">${fmt(l.AmountOW)}</td><td class="num">${fmt(l.AmountYQ)}</td><td class="num">${fmt(t)}</td><td class="num">${fmt(l.BaggageWeightAllowance)}</td><td class="num">${fmt(l.BagPieceAllowance)}</td><td class="num">${fmt(l.BagWeightAllowancePerPiece)}</td><td class="num">${fmt(l.BagPieceExcedentAmount)}</td></tr>`; }
+const rtHead = `<thead><tr><th>العملة</th><th>PassengerType</th><th class="num">AmountOW</th><th class="num">AmountRT</th><th class="num">AmountYQ</th><th class="num">Tax</th><th class="num">On booking</th><th class="num">Weight</th><th class="num">Pieces</th><th class="num">KG/Piece</th><th class="num">Excess</th></tr></thead>`;
+function rtRows(cur, res) {
+  const sec = (title, sd) => `<tr class="sec"><td colspan="11">${title} · ${esc(sd.leg || "?")}</td></tr>` + sd.lines.map((l) => `<tr><td>${cur}</td><td>${l.PassengerType}</td><td class="num">${fmt(l.AmountOW)}</td><td class="num">${fmt(l.AmountRT)}</td><td class="num">${fmt(l.AmountYQ)}</td><td class="num">${fmt(sd.tax[l.PassengerType])}</td><td class="num"><b>${fmt(sd.tot[l.PassengerType])}</b></td><td class="num">${fmt(l.BaggageWeightAllowance)}</td><td class="num">${fmt(l.BagPieceAllowance)}</td><td class="num">${fmt(l.BagWeightAllowancePerPiece)}</td><td class="num">${fmt(l.BagPieceExcedentAmount)}</td></tr>`).join("");
+  return sec("الذهاب", res.out) + sec("العودة", res.ret);
+}
+function syncTripUi() {
+  const rt = calcTrip() === "RT";
+  document.querySelectorAll("#c_trip [data-trip]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.trip === calcTrip())));
+  document.querySelectorAll("#tab-calc .rt-only").forEach((el) => { el.hidden = !rt || (el.id === "c_outWrap" && $("c_cur").value === "ALL") || (el.classList.contains("grid-f") && $("c_cur").value !== "ALL"); });
+  $("c_routeLbl").textContent = rt ? "خط الذهاب" : "الخط (الوجهة)"; $("c_fltLbl").textContent = rt ? "رقم رحلة الذهاب" : "رقم الرحلة";
+  $("c_totalLbl").textContent = rt ? "السعر الكلي (ذهاب وعودة)" : "السعر الكلي";
+  document.querySelectorAll('#c_multi label.f input[id^="c_tot_"]').forEach((i) => { i.parentElement.firstChild.textContent = (rt ? "الكلي " : "السعر ") + i.id.slice(6); });
+}
+function renderCalcRT() {
+  const all = $("c_cur").value === "ALL";
+  if (!all) {
+    const res = calcPrice(calcInput()); const k = res.breakdown;
+    showMsgs("calcMsgs", res.warnings.map((t) => ({ text: t })));
+    const tiles = [["الذهاب", res.out.leg || "?"], ["العودة", k.back || "?"], ["السعر الكلي", k.total], ["سعر الذهاب", k.outAmt], ["سعر العودة", k.retAmt], ["العمولة", k.comm], ["الفير RT", k.fareAD], ["نص الفير", k.half], ["Tax الذهاب", res.out.tax.AD], ["Tax العودة", res.ret.tax.AD], ["الطفل RT", k.totCHD], ["الرضيع RT", k.totINF]];
+    $("calcTiles").innerHTML = tiles.map(([l, v]) => `<div class="tile"><span>${l}</span><b>${fmt(v)}</b></div>`).join("");
+    $("calcTable").innerHTML = rtHead + "<tbody>" + rtRows($("c_cur").value, res) + "</tbody>";
+    $("calcAdd").textContent = "أضف الـ 8 سطور للتصدير"; return;
+  }
+  const rs = calcAllResults(); const msgs = [];
+  rs.forEach((r) => { if (r.skip) msgs.push({ text: `${r.cur}: ناقص السعر الكلي أو سعر الذهاب، ما حيتصدّر` }); else r.res.warnings.forEach((w) => msgs.push({ text: `${r.cur}: ${w}` })); });
+  showMsgs("calcMsgs", msgs);
+  $("calcTiles").innerHTML = rs.filter((r) => !r.skip).map((r) => { const k = r.res.breakdown; return `<div class="tile"><span>${r.cur}</span><b>${fmt(k.total)}</b><span>ذهاب ${fmt(k.outAmt)} · عودة ${fmt(k.retAmt)}<br>الفير ${fmt(k.fareAD)}</span></div>`; }).join("");
+  $("calcTable").innerHTML = rtHead + "<tbody>" + rs.filter((r) => !r.skip).map((r) => rtRows(r.cur, r.res)).join("") + "</tbody>";
+  const n = rs.filter((r) => !r.skip).length; $("calcAdd").textContent = `أضف ${n * 8} سطر للتصدير (${n} عملات)`;
+}
 function renderCalc() {
   if (!$("c_cur").options.length) $("c_cur").innerHTML = CURRENCIES.map((c) => `<option ${c === "OMR" ? "selected" : ""}>${c}</option>`).join("") + `<option value="ALL">كل العملات</option>`;
   const all = $("c_cur").value === "ALL";
   $("c_multi").hidden = !all; $("c_totalWrap").hidden = all;
+  syncTripUi();
+  if (calcTrip() === "RT") return renderCalcRT();
   if (!all) {
     const res = priceClass(calcInput(), state.data, state.data.settings); const k = res.breakdown;
     showMsgs("calcMsgs", res.warnings.map((t) => ({ text: t })));
@@ -1529,17 +1604,30 @@ function renderCalc() {
   const n = rs.filter((r) => !r.skip).length; $("calcAdd").textContent = `أضف ${n * 4} سطر للتصدير (${n} عملات)`;
 }
 $("c_route").addEventListener("change", () => { const f = (flightsOf($("c_route").value.trim().toUpperCase()).match(/[0-9A-Z]+/i) || [""])[0]; if (f) { $("c_flt").value = f; renderCalc(); } });
-["c_route", "c_flt", "c_cur", "c_total", "c_cls", "c_pc", "c_kg", ...CURRENCIES.map((c) => "c_tot_" + c)].forEach((id) => $(id).addEventListener("input", renderCalc));
+["c_route", "c_flt", "c_flt2", "c_cur", "c_total", "c_out", "c_cls", "c_pc", "c_kg", ...CURRENCIES.map((c) => "c_tot_" + c), ...CURRENCIES.map((c) => "c_out_" + c)].forEach((id) => $(id).addEventListener("input", renderCalc));
+// baggage comes from the stored fares (route + class); the fields stay editable
+function fareBag(route, cls) { const row = (((state.data.fares || {})[route] || {}).rows || []).find((x) => String(x.cls || "").trim().toUpperCase() === String(cls || "").trim().toUpperCase()); return row ? { pc: row.pc, kg: row.kg } : null; }
+function fillBag() { const rt = $("c_route").value.trim().toUpperCase(), cls = $("c_cls").value;
+  const a = fareBag(rt, cls); if (a) { if (isNum(a.pc)) $("c_pc").value = a.pc; if (isNum(a.kg)) $("c_kg").value = a.kg; }
+  const b = fareBag(reverseRoute(rt), cls); $("c_pc2").value = b && isNum(b.pc) ? b.pc : ""; $("c_kg2").value = b && isNum(b.kg) ? b.kg : ""; }
+$("c_cls").addEventListener("change", () => { fillBag(); renderCalc(); });
+["c_pc2", "c_kg2"].forEach((id) => $(id).addEventListener("input", renderCalc));
+const fillFlt2 = () => { const b = reverseRoute($("c_route").value.trim().toUpperCase()); const f = (flightsOf(b).match(/[0-9A-Z]+/i) || [""])[0]; if (f) $("c_flt2").value = f; };
+$("c_route").addEventListener("change", () => { fillFlt2(); fillBag(); renderCalc(); });
+$("c_trip").addEventListener("click", (e) => { const b = e.target.closest("[data-trip]"); if (!b) return; state.calcTrip = b.dataset.trip; if (state.calcTrip === "RT" && !$("c_flt2").value) fillFlt2(); renderCalc(); });
 $("c_cur").addEventListener("change", () => { if ($("c_cur").value === "ALL" && !isNum($("c_tot_USD").value)) {
   const prevCur = CURRENCIES.find((c) => c === state.calcPrevCur); if (prevCur && isNum($("c_total").value)) $("c_tot_" + prevCur).value = $("c_total").value; }
   state.calcPrevCur = $("c_cur").value; renderCalc(); });
 $("c_fromUsd").addEventListener("click", () => { const u = $("c_tot_USD").value; if (!isNum(u)) { showMsgs("calcMsgs", [{ kind: "bad", text: "اكتب سعر الدولار أول." }]); return; }
-  const v = fromUSD(Number(u), $("c_route").value.trim().toUpperCase()); for (const c of CURRENCIES) $("c_tot_" + c).value = v[c]; renderCalc(); });
+  const rt0 = $("c_route").value.trim().toUpperCase(); const v = fromUSD(Number(u), rt0); for (const c of CURRENCIES) $("c_tot_" + c).value = v[c];
+  if (calcTrip() === "RT" && isNum($("c_out_USD").value)) { const w = fromUSD(Number($("c_out_USD").value), rt0); for (const c of CURRENCIES) $("c_out_" + c).value = w[c]; }
+  renderCalc(); });
 $("calcAdd").addEventListener("click", () => {
   if ($("c_cur").value !== "ALL") {
-    const res = priceClass(calcInput(), state.data, state.data.settings);
+    const res = calcPrice(calcInput());
+    if (calcTrip() === "RT" && res.warnings.some((w) => /لازم|اكتب/.test(w))) { showMsgs("calcMsgs", [{ kind: "bad", text: "صحّح السعر الكلي وسعر الذهاب أول." }]); return; }
     state.basket = [...res.lines, ...state.basket]; saveBasket(); renderBasket();
-    showMsgs("calcMsgs", [{ kind: "good", text: "اتضافت 4 سطور لملف التصدير (في تبويب التصدير)." }]); return;
+    showMsgs("calcMsgs", [{ kind: "good", text: `اتضافت ${res.lines.length} سطور لملف التصدير (في تبويب التصدير).` }]); return;
   }
   const rs = calcAllResults().filter((r) => !r.skip); let n = 0;
   for (const r of rs) { state.basket = [...r.res.lines, ...state.basket]; n += r.res.lines.length; }
@@ -3531,7 +3619,7 @@ const I18N_EXACT = {
   "لسه ما أضفت حاجة. اختار خط وعملة واضغط «أضف للتصدير».": "Nothing added yet. Choose a route and currency, then press «Add to export».",
   "التنزيل ما متاح في العرض ده. افتح الصفحة من claude.ai وجرّب تاني.": "Downloads aren't available in this view. Open the page from claude.ai and try again.",
   "خطوط مسعّرة": "Priced routes", "خطوط بدون ضرايب": "Routes without taxes", "سطور ملف التصدير": "Export file lines",
-  "حاسبة سريعة (زي شاشة INTERFACE)": "Quick calculator (like the INTERFACE sheet)", "الخط (الوجهة)": "Route (leg)", "رقم الرحلة": "Flight no.", "السعر الكلي": "Total price",
+  "حاسبة سريعة": "Quick calculator", "ذهاب وعودة (RT)": "Round trip (RT)", "رقم رحلة العودة": "Return flight no.", "قطع العودة": "Return pieces", "وزن العودة KG": "Return weight KG", "سعر الذهاب": "Outbound price", "خط الذهاب": "Outbound route", "رقم رحلة الذهاب": "Outbound flight no.", "السعر الكلي (ذهاب وعودة)": "Total price (round trip)", "الذهاب": "Outbound", "العودة": "Return", "سعر العودة": "Return price", "الفير RT": "RT fare", "نص الفير": "Half fare", "Tax الذهاب": "Outbound tax", "Tax العودة": "Return tax", "الطفل RT": "Child RT", "الرضيع RT": "Infant RT", "أضف الـ 8 سطور للتصدير": "Add the 8 lines to export", "الخط (الوجهة)": "Route (leg)", "رقم الرحلة": "Flight no.", "السعر الكلي": "Total price",
   "الكلاس (Fare Code)": "Class (Fare Code)", "عدد القطع": "Pieces", "الوزن KG": "Weight KG", "احسب من الدولار": "Calculate from USD",
   "SDG بالـ ROE OUT/IN، والباقي بسعر صرف الأسعار في الإعدادات": "SDG uses ROE OUT/IN; other currencies use the fare exchange rates in Settings",
   "أضف السطور دي للتصدير": "Add these lines to export", "الخط": "Route", "مصدر الضريبة": "Tax source", "ما في ⚠": "None ⚠", "Tax البالغ": "Tax adult", "Tax الطفل": "Tax child", "Tax الرضيع": "Tax infant",
