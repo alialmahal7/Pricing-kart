@@ -435,6 +435,12 @@ label.f input, label.f select { font: 14px var(--font-num); padding: 7px 9px; bo
 .tile.click { cursor: pointer; } .tile.click[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
 td.wrap { white-space: normal; min-width: 220px; font-size: 12px; }
 .pill { font: 600 12px var(--font-num); padding: 2px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
+.pv-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 10px; }
+.pv-tabs:empty { display: none; }
+.pv-tabs button { border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 6px 14px; border-radius: 8px; font: 700 13px var(--font-num); cursor: pointer; }
+.pv-tabs button[aria-pressed="true"] { background: var(--navy, #14304a); border-color: var(--navy, #14304a); color: #fff; }
+.pv-tabs button .w { color: var(--warn); margin-inline-start: 4px; }
+.pv-tabs button[aria-pressed="true"] .w { color: #f5c26b; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
 .seg button { border: 0; background: transparent; padding: 7px 16px; font: 600 13.5px var(--font-body); color: var(--muted); cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--navy, #14304a); color: #fff; }
@@ -520,6 +526,7 @@ body[data-role="editor"] #ctxMenu [data-ctx="pen"], body[data-role="editor"] [da
     </div>
     <div class="card">
       <div class="row between"><h2 id="pvTitle">2. المعاينة</h2><span class="muted" id="pvNote"></span></div>
+      <div class="pv-tabs" id="pvTabs"></div>
       <div class="tbl"><table id="pvTable"></table></div>
     </div>
     <div class="card">
@@ -1417,15 +1424,20 @@ function renderPreview() {
   }
   $("addBtn").textContent = L("أضف للتصدير", "Add to export");
   $("pvTitle").textContent = `2. المعاينة: ${routeLabel(state.route)} · ${state.curs.length === CURRENCIES.length ? "كل العملات" : state.curs.join(" + ")}`;
-  let html = `<thead><tr><th>العملة</th><th>الكلاس</th><th>الروت</th><th class="num">السعر</th><th class="num">Tax AD/CHD/INF</th><th class="num">Fare AD</th><th class="num">YQ AD</th><th class="num">Fare CHD</th><th class="num">YQ CHD</th><th class="num">YQ INF</th><th class="num">قطع / KG</th><th class="num">الكيلو الزايد</th><th class="num">القطعة الزايدة</th></tr></thead><tbody>`;
-  const msgs = [];
-  for (const c of curs) {
-    const res = exportRoute(state.route, c, state.data, state.data.settings);
-    if (res.error) { msgs.push({ kind: "bad", text: `${c}: ${res.error}` }); continue; }
-    res.warnings.forEach((w) => msgs.push({ text: `${c}: ${w}` }));
+  // one currency at a time: tabs for the selected currencies (all of them still go to the export)
+  if (!curs.includes(state.pvCur)) state.pvCur = curs[0];
+  const results = {}; const msgs = [];
+  for (const c of curs) { const res = exportRoute(state.route, c, state.data, state.data.settings); results[c] = res;
+    if (res.error) msgs.push({ kind: "bad", text: `${c}: ${res.error}` }); else res.warnings.forEach((w) => msgs.push({ text: `${c}: ${w}` })); }
+  $("pvTabs").innerHTML = curs.length > 1 ? curs.map((c) => `<button type="button" data-pvcur="${c}" aria-pressed="${c === state.pvCur}">${c}${results[c].error || (results[c].warnings || []).length ? '<span class="w">⚠</span>' : ""}</button>`).join("") : "";
+  const taxCell = (k) => (k.tax === k.taxChd && k.tax === k.infTax ? fmt(k.tax) : `${fmt(k.tax)} / ${fmt(k.taxChd)} / ${fmt(k.infTax)}`) + (k.taxSource !== "iata" ? " ⚠" : "");
+  let html = `<thead><tr><th>الكلاس</th><th class="num">السعر</th><th class="num">Tax</th><th class="num">Fare AD</th><th class="num">YQ AD</th><th class="num">Fare CHD</th><th class="num">YQ CHD</th><th class="num">YQ INF</th><th class="num">قطع / KG</th><th class="num">الكيلو الزايد</th><th class="num">القطعة الزايدة</th></tr></thead><tbody>`;
+  for (const c of [state.pvCur]) {
+    const res = results[c];
+    if (!res || res.error) { html += `<tr><td class="muted" colspan="11">${esc(res ? res.error : "")}</td></tr>`; continue; }
     res.blocks.forEach((b, i) => {
       const k = b.breakdown; const row = (state.data.fares[state.route].rows || [])[i] || {};
-      html += `<tr class="${i === 0 ? "blk" : ""}"><td class="cur">${c}</td><td class="cls">${esc(b.cls)}</td><td class="num">${esc(state.route)}</td><td class="num price">${fmt(k.total)}</td><td class="num">${fmt(k.tax)} / ${fmt(k.taxChd)} / ${fmt(k.infTax)}${k.taxSource !== "iata" ? " ⚠" : ""}</td><td class="num">${fmt(k.fareAD)}</td><td class="num">${fmt(k.yqAD)}</td><td class="num">${fmt(k.fareCHD)}</td><td class="num">${fmt(k.yqCHD)}</td><td class="num">${fmt(k.yqINF)}</td><td class="num">${fmt(row.pc)} / ${fmt(row.kg)}</td><td class="num">${fmt(k.bagEx)}</td><td class="num">${fmt(k.bagprice)}</td></tr>`;
+      html += `<tr><td class="cls">${esc(b.cls)}</td><td class="num price">${fmt(k.total)}</td><td class="num">${taxCell(k)}</td><td class="num">${fmt(k.fareAD)}</td><td class="num">${fmt(k.yqAD)}</td><td class="num">${fmt(k.fareCHD)}</td><td class="num">${fmt(k.yqCHD)}</td><td class="num">${fmt(k.yqINF)}</td><td class="num">${fmt(row.pc)} / ${fmt(row.kg)}</td><td class="num">${fmt(k.bagEx)}</td><td class="num">${fmt(k.bagprice)}</td></tr>`;
     });
   }
   $("pvTable").innerHTML = html + "</tbody>";
@@ -1434,6 +1446,7 @@ function renderPreview() {
   $("pvNote").textContent = `كل كلاس بيطلع 4 سطور · الجنيه بي ROE ${roeDirection(state.route, state.data.settings)} = ${roeFor(state.route, state.data.settings).toLocaleString("en-US")}`;
 }
 
+$("pvTabs").addEventListener("click", (e) => { const b = e.target.closest("[data-pvcur]"); if (!b) return; state.pvCur = b.dataset.pvcur; renderPreview(); });
 function renderBasket() {
   if ($("kpis")) renderKpis();
   $("bkCount").textContent = state.basket.length + " سطر";
