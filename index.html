@@ -1516,7 +1516,7 @@ function renderExport() { renderKpis(); renderRoutes(); renderPreview(); renderB
 
 // ---------- calculator ----------
 function fareRates() { return Object.assign(clone(DEFAULT_SETTINGS.fareRates), state.data.settings.fareRates || {}); }
-function convFare(u, cur) { const fr = fareRates()[cur]; if (!fr || !isNum(fr.rate)) return null; const v = Math.round(u * Number(fr.rate) * 1e6) / 1e6; const st = Number(fr.step) || 1; return Math.round(Math.floor(v / st + 1e-9) * st * 1000) / 1000; }
+function convFare(u, cur) { const fr = fareRates()[cur]; if (!fr || !isNum(fr.rate)) return null; const v = Math.round(u * Number(fr.rate) * 1e6) / 1e6; const st = Number(fr.step); if (!(st > 0)) return Math.round(v * 100) / 100; /* step 0 = no rounding */ return Math.round(Math.floor(v / st + 1e-9) * st * 1000) / 1000; }
 function fromUSD(u, route) {
   const out = { USD: u, SDG: u * roeFor(route, state.data.settings) };
   for (const c of Object.keys(fareRates())) out[c] = convFare(u, c);
@@ -1841,16 +1841,46 @@ function renderSettings() {
     if (el.dataset.k === "ladder2" || el.dataset.k === "ladder3") { s.tierMults = [1, el.dataset.k === "ladder2" ? v : (s.tierMults || DEFAULT_SETTINGS.tierMults)[1], el.dataset.k === "ladder3" ? v : (s.tierMults || DEFAULT_SETTINGS.tierMults)[2]]; markDirty("settings", "setMsgs"); return; }
     if (el.dataset.k) s[el.dataset.k] = v ?? 0; else if (el.dataset.rate) s.taxRates[el.dataset.rate] = v ?? 0; else if (el.dataset.sp) s.couponSpecial[el.dataset.sp] = el.dataset.sp === "flt" ? el.value.trim() : (v ?? 0);
     markDirty("settings", "setMsgs"); };
-  const fr = fareRates(); state.data.settings.fareRates = fr;
-  $("fareRatesTable").innerHTML = `<thead><tr><th>العملة</th><th>الريت (كم مقابل الدولار الواحد)</th><th>التقريب لي تحت لأقرب</th><th>مثال: سعر <bdi dir="ltr">440 USD</bdi> بيبقى</th></tr></thead><tbody>` +
-    Object.keys(fr).map((c) => `<tr><td>${c}</td><td><input id="fr-${c}-rate" data-fr="${c}" data-k="rate" value="${esc(fr[c].rate)}" inputmode="decimal"></td><td><input id="fr-${c}-step" data-fr="${c}" data-k="step" value="${esc(fr[c].step)}" inputmode="decimal"></td><td class="num" id="fr-${c}-ex">${fmt(convFare(440, c))}</td></tr>`).join("") + "</tbody>";
-  $("fareRatesTable").oninput = (e) => { const el = e.target; if (!el.dataset.fr) return; fr[el.dataset.fr][el.dataset.k] = numOrNull(el.value); $(`fr-${el.dataset.fr}-ex`).textContent = fmt(convFare(440, el.dataset.fr)); markDirty("settings", "fareRatesMsgs"); };
+  const fr = fareRates(); state.data.settings.fareRates = fr; if (!frBase) frBase = JSON.parse(JSON.stringify(fr));
+  $("fareRatesTable").innerHTML = `<thead><tr><th>العملة</th><th>الريت (كم مقابل الدولار الواحد)</th><th>التقريب لي تحت لأقرب <span class="muted" style="font-weight:400">(0 = بدون تقريب)</span></th><th>مثال: سعر <bdi dir="ltr">440 USD</bdi> بيبقى</th><th>الأسعار المحفوظة</th></tr></thead><tbody>` +
+    Object.keys(fr).map((c) => `<tr><td>${c}</td><td><input id="fr-${c}-rate" data-fr="${c}" data-k="rate" value="${esc(fr[c].rate)}" inputmode="decimal"></td><td><input id="fr-${c}-step" data-fr="${c}" data-k="step" value="${esc(fr[c].step)}" inputmode="decimal"></td><td class="num" id="fr-${c}-ex">${fmt(convFare(440, c))}</td><td id="fr-${c}-st">${frStatus(c)}</td></tr>`).join("") + "</tbody>";
+  $("fareRatesTable").oninput = (e) => { const el = e.target; if (!el.dataset.fr) return; frArmed = false; fr[el.dataset.fr][el.dataset.k] = numOrNull(el.value); $(`fr-${el.dataset.fr}-ex`).textContent = fmt(convFare(440, el.dataset.fr)); $(`fr-${el.dataset.fr}-st`).innerHTML = frStatus(el.dataset.fr); markDirty("settings", "fareRatesMsgs"); };
   $("roeFields").innerHTML = Object.keys(state.data.roe).map((c) => `<label class="f">${c}<input id="roe_${c}" data-roe="${c}" value="${esc(state.data.roe[c])}" inputmode="decimal" ${c === "SDG" ? "disabled" : ""}></label>`).join("");
   $("roeFields").oninput = (e) => { const c = e.target.dataset.roe; if (!c) return; state.data.roe[c] = numOrNull(e.target.value); markDirty("roe", "roeMsgs"); };
   editTable("cpTable", [{ key: "flt", label: "الرحلة" }, { key: "pct", label: "النسبة %", num: true }], s.couponPct, () => markDirty("settings", "setMsgs"), { rerender: renderSettings });
 }
 $("s_cpAdd").addEventListener("click", () => { state.data.settings.couponPct.push({ flt: "", pct: 0 }); renderSettings(); markDirty("settings", "setMsgs"); });
-$("fareRatesSave").addEventListener("click", () => saveDoc("settings", state.data.settings, "fareRatesMsgs"));
+// saving fare rates re-derives the stored local-currency prices (SAR, AED, OMR, EGP, QAR, KWD) from USD, after a confirm click
+// per currency: how many stored prices don't match the current rate, with a one-currency refresh
+function frStale(c) { const out = []; for (const [route, f] of Object.entries(state.data.fares || {})) for (const r of (f.rows || [])) { if (!isNum(r.USD)) continue; const v = convFare(Number(r.USD), c); if (isNum(v) && Number(r[c]) !== Number(v)) out.push({ route, r, v }); } return out; }
+function frStatus(c) { const n = frStale(c).length; return n ? `<button type="button" class="btn ghost sm" data-frsync="${c}">${L(`حدّث ${n} سعر`, `Update ${n} prices`)}</button>` : `<span class="muted">✓ ${L("مطابقة", "Up to date")}</span>`; }
+let frSyncArmed = "";
+document.addEventListener("click", async (e) => { const b = e.target.closest("[data-frsync]"); if (!b) return; const c = b.dataset.frsync; const st = frStale(c);
+  if (frSyncArmed !== c) { frSyncArmed = c; const ex = st.slice(0, 2).map((x) => `${x.route} ${x.r.cls}: ${fmt(x.r[c])} ← ${fmt(x.v)}`).join(" · ");
+    showMsgs("fareRatesMsgs", [{ kind: "bad", text: L(`حيتحدّث ${st.length} سعر ${c} بالريت الحالي. مثلاً: ${ex}. اضغط «حدّث» تاني للتأكيد.`, `${st.length} ${c} prices will be recalculated. Click again to confirm.`) }]); return; }
+  frSyncArmed = ""; st.forEach((x) => { x.r[c] = x.v; });
+  await saveDoc("fares", { routes: state.data.fares }, "fareRatesMsgs");
+  showMsgs("fareRatesMsgs", [{ kind: "good", text: L(`اتحدّث ${st.length} سعر ${c}.`, `${st.length} ${c} prices updated.`) }]); renderAll(); });
+let frArmed = false, frBase = null; // frBase: the fare rates as last saved, so only currencies whose rate/step changed get re-derived
+const frChanged = () => { const fr = fareRates(); return Object.keys(fr).filter((c) => !frBase || !frBase[c] || Number(frBase[c].rate) !== Number(fr[c].rate) || Number(frBase[c].step) !== Number(fr[c].step)); };
+function fareRateDiffs() {
+  const out = []; const curs = frChanged();
+  for (const [route, f] of Object.entries(state.data.fares || {})) for (const r of (f.rows || [])) { if (!isNum(r.USD)) continue;
+    const v = fromUSD(Number(r.USD), route); for (const c of curs) if (isNum(v[c]) && Number(r[c]) !== Number(v[c])) out.push({ route, cls: r.cls, c, from: r[c], to: v[c] }); }
+  return out;
+}
+$("fareRatesSave").addEventListener("click", async () => {
+  const d = fareRateDiffs();
+  if (d.length && !frArmed) { frArmed = true;
+    const routes = new Set(d.map((x) => x.route)).size; const curs = [...new Set(d.map((x) => x.c))].join("، ");
+    const ex = d.slice(0, 3).map((x) => `${x.route} ${x.cls} ${x.c}: ${fmt(x.from)} ← ${fmt(x.to)}`).join(" · ");
+    showMsgs("fareRatesMsgs", [{ kind: "bad", text: `الريت الجديد حيحدّث ${d.length} سعر في ${routes} روت (${curs}). مثلاً: ${ex}. اضغط «احفظ» تاني للتأكيد.` }]); return; }
+  frArmed = false;
+  if (d.length) { const curs = frChanged();
+    for (const [route, f] of Object.entries(state.data.fares || {})) for (const r of (f.rows || [])) { if (!isNum(r.USD)) continue; const v = fromUSD(Number(r.USD), route); for (const c of curs) if (isNum(v[c])) r[c] = v[c]; } }
+  await saveDoc("settings", state.data.settings, "fareRatesMsgs"); frBase = JSON.parse(JSON.stringify(fareRates()));
+  if (d.length) { await saveDoc("fares", { routes: state.data.fares }, "fareRatesMsgs"); showMsgs("fareRatesMsgs", [{ kind: "good", text: `اتحفظ الريت واتحدّث ${d.length} سعر.` }]); if (typeof renderAll === "function") renderAll(); }
+});
 $("roeSave").addEventListener("click", () => saveDoc("roe", { rates: state.data.roe }, "roeMsgs"));
 $("s_save").addEventListener("click", () => saveDoc("settings", state.data.settings, "setMsgs"));
 
